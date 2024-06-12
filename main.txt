@@ -1,0 +1,243 @@
+package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	args := os.Args[1:] // grab arguments
+	// check if it is valid
+	// not through check. should fail if stirng are not '.' or numbers or not 9 characters
+	if len(args) != 9 {
+		fmt.Println("Error")
+		return
+	}
+
+	// create empty board
+	var board [9][9]int
+
+	// populate board with inputs
+	for i := 0; i < 9; i++ {
+		rowN := []rune(args[i])
+		for j := 0; j < 9; j++ {
+			if args[i][j] == '.' {
+				board[i][j] = 0
+			} else {
+				board[i][j] = int(rowN[j] - 48)
+			}
+		}
+	}
+
+	counter := 0
+	// for board is not solved
+	for !solved(board) {
+		counter = 0
+		if counter >= 65 {
+			printBoard(board)
+			fmt.Println("Error")
+			return
+		}
+		for i := 0; i < 9; i++ { //going through each row
+			for j := 0; j < 9; j++ { // going through each squaere
+				if board[i][j] == 0 { // if not filled yet
+					board[i][j] = solvingSquare(board, i, j)
+					// check if solvable
+					if board[i][j] == -1 {
+						printBoard(board)
+						fmt.Println("Error")
+						return
+					}
+					counter++
+				}
+			}
+		}
+	}
+
+	// print board as array, not strings as required
+	// need to change
+	printBoard(board)
+
+}
+
+// return valid input if only 1 is found
+// return negative if clashes are found
+func solvingSquare(board [9][9]int, row, col int) int {
+	var possibility [9]bool
+	rowPos := row % 3
+	colPos := col % 3
+
+	for i := 0; i < 9; i++ {
+		possibility[i] = true
+	}
+
+	// testing possibilities 1 to 9
+	for i := 1; i <= 9; i++ {
+		// check if in row
+		for j := 0; j < 9; j++ {
+			if board[row][j] == i { // if number in row
+				possibility[i-1] = false // remove possibility
+			}
+		}
+		// check if in column
+		for j := 0; j < 9; j++ {
+			if board[j][col] == i { // if number in col
+				possibility[i-1] = false // remove possibility
+			}
+		}
+
+		// check if in box
+		rowStart := row - rowPos
+		colStart := col - colPos
+		for j := 0; j < 3; j++ {
+			for k := 0; k < 3; k++ {
+				if board[rowStart+j][colStart+k] == i { // if number in row
+					possibility[i-1] = false // remove possibility
+				}
+			}
+		}
+
+	}
+
+	// find number of possibilities
+	possibleNum := 0
+	for j := 0; j < 9; j++ {
+		if possibility[j] {
+			possibleNum++
+		}
+	}
+
+	// if no solution... maybe error
+	if possibleNum == 0 {
+		return -1
+	}
+
+	// if only 1 solution, lets go
+	if possibleNum == 1 {
+		for i := 0; i < 9; i++ {
+			if possibility[i] {
+				return i + 1
+			}
+		}
+	}
+
+	// determine rows and cols for elimination
+	checkRow1 := 1
+	checkRow2 := 2
+	checkCol1 := 1
+	checkCol2 := 2
+
+	if rowPos == 1 {
+		checkRow2 = -1
+	}
+	if rowPos == 2 {
+		checkRow1 = -1
+		checkRow2 = -2
+	}
+
+	if colPos == 1 {
+		checkCol2 = -1
+	}
+	if colPos == 2 {
+		checkCol1 = -1
+		checkCol2 = -2
+	}
+
+	found1 := false
+	found2 := false
+	found3 := false
+	found4 := false
+
+	for i := 1; i <= 9; i++ { // looking at 1 to 9
+		if possibility[i-1] { // if they are possible
+			for j := 0; j < 9; j++ {
+				if board[row+checkRow1][col] != 0 && board[row+checkRow2][col] != 0 { // if only one open slot in
+					if board[j][col+checkCol1] == i {
+						found1 = true
+					}
+					if board[j][col+checkCol2] == i {
+						found2 = true
+					}
+
+					if found1 && found2 {
+						return i
+
+					}
+				}
+			}
+		}
+	}
+
+	for i := 1; i <= 9; i++ { // looking at 1 to 9
+		if possibility[i-1] {
+			for j := 0; j < 9; j++ {
+				if board[row][col+checkCol1] != 0 && board[row][col+checkCol2] != 0 {
+					if board[row+checkRow1][j] == i {
+						found3 = true
+					}
+					if board[row+checkRow2][j] == i {
+						found4 = true
+					}
+
+					if found3 && found4 {
+						return i
+					}
+				}
+			}
+		}
+	}
+
+	if possibleNum > 2 {
+		return 0
+	}
+
+	return 0
+}
+
+// check board is solved
+// currently checks if board has any 0
+func solved(board [9][9]int) bool {
+	for i := 0; i < 9; i++ {
+		for j := 0; j < 9; j++ {
+			if board[i][j] == 0 {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func printBoard(board [9][9]int) {
+	for i := 0; i < 9; i++ {
+		fmt.Println(board[i])
+	}
+	fmt.Println()
+}
+
+/*
+http://sudopedia.enjoysudoku.com/Invalid_Test_Cases.html
+
+audit
+https://github.com/01-edu/public/tree/master/subjects/sudoku/audit
+
+valid test case
+go run main.go ".96.4...1" "1...6...4" "5.481.39." "..795..43" ".3..8...." "4.5.23.18" ".1.63..59" ".59.7.83." "..359...7" | cat -e
+go run main.go "256489173" "374615982" "981723456" "593274861" "7128.6549" "468591327" "635147298" "127958634" "849362715" | cat -e
+go run main.go "3.542.81." "4879.15.6" ".29.56374" "85.793.41" "6132.8957" ".74.6528." "2413.9.65" "5.867.192" ".965124.8" | cat -e
+go run main.go "..2.3...8" ".....8..." ".31.2...." ".6..5.27." ".1.....5." "2.4.6..31" "....8.6.5" ".......13" "..531.4.." | cat -e
+*/
+
+/*
+invalid test case
+go run main.go "........." "........." "........." "........." "........." "........." "........." "........." "........." | cat -e
+go run main.go "........." "........." "........." "........." "....1...." "........." "........." "........." "........." | cat -e
+go run main.go "........." "..5....9." "..4....1." "2....3.5." "...7....." "438...2.." "....9...." ".1.4...6." "........." | cat -e
+go run main.go "..9.7...5" "..21..9.." "1...28..." ".7...5..1" "..851...." ".5....3.." ".....3..6" "8........" "21.....87" | cat -e
+go run main.go "6.159...." ".9..1...." "........4" ".7.314..6" ".24.....5" "..3....1." "..6.....3" "...9.2.4." ".....16.." | cat -e
+go run main.go ".4.1..35." "........." "...2.5..." "...4.89.." "26.....12" ".5.3....7" "..4...16." "6....7..." ".1..8..2." | cat -e
+go run main.go "..9.287.." "8.6..4..5" "..3.....4" "6........" ".2.71345." "........2" "3.....5.." "9..4..8.7" "..125.3.." | cat -e
+go run main.go ".39...12." "...9.7..." "8..4.1..6" ".42...79." "........." ".91...54." "5..1.9..3" "...8.5..." ".14...87." | cat -e
+go run main.go "..3.....6" "...98..2." "9426..7.." "45...6..." "........." "1.9.5.47." "....25.4." "6...785.." "........." | cat -e
+go run main.go "...3165.." "8..5..1.." ".1.89724." "9.1.85.2." "...9.1..." ".4.263..1" ".5.....1." "1..4.9..2" "..61.8..." | cat -e
+
+*/
